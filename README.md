@@ -7,7 +7,7 @@ Winter 2025 class content
 
 - Class 05 Data vis with ggplot2
 
-- Class 06 R functions
+- Class 06 [R functions] (https://github.com/iruud/bggn213_github/blob/main/class06/class06_functions.pdf)
 
 - Class 07 PCA
 
@@ -24,6 +24,5 @@ Winter 2025 class content
 - Class 13
 
 - Class 14
-=======
-- Class 06 [R functions] (https://github.com/iruud/bggn213_github/blob/main/class06/class06_functions.pdf)
->>>>>>> 9cd58b05392db4af72b66ed17e32f3e3ac36649c
+
+
