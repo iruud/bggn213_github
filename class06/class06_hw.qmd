@@ -1,0 +1,91 @@
+---
+title: "class06_HW"
+author: "Isabella Ruud"
+format: pdf
+---
+
+Q6. How would you generalize the original code above to work with any set of 
+input protein structures?
+
+ Write your own function starting from the code above that analyzes protein drug 
+interactions by reading in any protein PDB data and outputs a plot for the 
+specified protein.
+
+ Create a new RMarkdown document with your function code AND example output. We 
+also suggest you include narrative text that address the rubric items below. 
+Generate a PDF report and submit this PDF to our GradeScope site
+
+Here is the starting code:
+
+```{r}
+ # Can you improve this analysis code?
+ library(bio3d)
+ s1 <- read.pdb("4AKE")  # kinase with drug
+ s2 <- read.pdb("1AKE")  # kinase no drug
+ s3 <- read.pdb("1E4Y")  # kinase with drug
+ s1.chainA <- trim.pdb(s1, chain="A", elety="CA")
+ s2.chainA <- trim.pdb(s2, chain="A", elety="CA")
+ s3.chainA <- trim.pdb(s3, chain="A", elety="CA")
+ s1.b <- s1.chainA$atom$b
+ s2.b <- s2.chainA$atom$b
+ s3.b <- s3.chainA$atom$b
+ plotb3(s1.b, sse=s1.chainA, typ="l", ylab="Bfactor") 
+plotb3(s2.b, sse=s2.chainA, typ="l", ylab="Bfactor") 
+plotb3(s3.b, sse=s3.chainA, typ="l", ylab="Bfactor")
+```
+
+Re-writing the code to make it a function that can work with any set of input 
+protein structures:
+
+
+
+```{r}
+#plot_bfactor is a function that plots the b factor for a given protein structure, 
+#which can give insights on the relative flexability/rigidity of the protein
+
+#plot_bfactor takes in a pdb code for a protein as well as an optional chain 
+#parameter that is default set to chain A, but can be changed if the user 
+#specifies. 
+plot_bfactor <- function(pdb_code, prot_chain = "A") {
+  
+  #the structure of the protein is read in a as a pdb file using the input pdb 
+  #code
+  structure <- read.pdb(pdb_code)
+  
+  #the alpha carbons of the desired protein chain within the protein structure 
+  #are selected. if the user specified the protein chain then it would be used 
+  #here, or else chain A is used as default
+  structure.chain <-  trim.pdb(structure, chain=prot_chain, elety="CA")
+  
+  #the b factor values for the atoms selected in the previous step are selected 
+  #here
+  structure.bfactor <- structure.chain$atom$b
+  
+  #a scatter plot of the b factor value for each atom in the protein structure 
+  #is created. this is the output of the function
+  plotb3(structure.bfactor, sse=structure.chain, typ="l", ylab="Bfactor") 
+}
+```
+
+
+Calling the function plot_bfactor to test it:
+
+```{r}
+s1 = "4AKE"
+plot_bfactor(s1)
+s2 = "1AKE"
+plot_bfactor(s2)
+s3 = "1E4Y"
+plot_bfactor(s3)
+```
+
+Applying function to a list of structures:
+
+```{r}
+s1 = "4AKE"
+s2 = "1AKE"
+s3 = "1E4Y"
+structures <- c(s1,s2,s3)
+sapply(structures, plot_bfactor)
+```
+

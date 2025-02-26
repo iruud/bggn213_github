@@ -1,0 +1,252 @@
+---
+title: "Class06: R Functions"
+author: "Isabella Ruud"
+format: pdf
+---
+
+Today we are going to get more exposure to functions in R.
+
+Let's start with a silly simple function to add some numbers:
+
+```{r}
+#add two numbers together with a default value of 0 for y
+add <- function(x,y=0) {
+  x + y
+}
+
+```
+
+Can we use this function? Yes, if you play the code block with the function defined in it
+
+```{r}
+add(1,1)
+```
+```{r}
+add(c(100,200),1)
+add(x=100, y=1)
+```
+Sometimes you need to argue with functions to get it to do what you want (ie define what base to calculate the log in)
+```{r}
+log(10)
+log(10,base=10)
+```
+You need to pass the right number of arguments to the function for it to run
+```{r}
+#this code brings up an error message so I commented it out
+#add(100,1,200)
+```
+
+sample() function takes a sample of a specified size from the elements of x with or without replacement AKA it randomly selects elements from a vector
+
+It takes 4 arguments x: a vector of elements to choose from, n: the number of items to choose, replace: defaults to false and tells whether to sample with replacement, and prob: degaults to null and can specify probability weights for choosing elements from the vector
+
+```{r}
+sample(1:10, size = 1)
+sample(1:10, size=11, replace = TRUE)
+```
+Note that you can only draw a sample larger than the vector size if replace is set to true.
+
+## Generate DNA sequences
+
+Write a function to generate a random nucleotide sequence of a use specified size
+
+All functions in R have at least 3 things:
+-a name (we pick this, in this case it is generate_DNA)
+-input arguments (length of the output sequence)
+-body (randomly samples from A,T,G,C characters and pastes the characters into a string)
+
+```{r}
+#generate_DNA(length) takes an input length and makes a random DNA sequence of that length
+generate_DNA <- function(length) {
+  
+#take length number of random samples from the list of nucleotides with replacement
+nuc_list <- sample(c('A', 'T', 'G', 'C'), size = length, replace = TRUE)
+
+#print out a single element vector by concatenating the characters from the random sampling together into one word
+dna <- paste(nuc_list, collapse = "")
+return(dna)
+}
+
+generate_DNA(6)
+```
+
+I want the ability to switch between two output formats (concatenating the nucleotides or not), so I can do that with an extra input argument that controls it with TRUE/FALSE
+
+```{r}
+#generate_DNA(length) takes an input length and makes a random DNA sequence of that length. now collapse can be specified to return the DNA as one word (default) or as a list of nucleotide characters
+generate_DNA <- function(length, collapse = TRUE) {
+  
+#take length number of random samples from the list of nucleotides with replacement
+dna <- sample(c('A', 'T', 'G', 'C'), size = length, replace = TRUE)
+
+#print out a single element vector by concatenating the characters from the random sampling together into one word
+if(collapse) {
+  dna <- paste(dna, collapse = "")
+}
+return(dna)
+}
+
+generate_DNA(6)
+generate_DNA(6, collapse=FALSE)
+```
+```{r}
+
+```
+
+Add the ability to print out a message if the user is sad using an input parameter called mood where if mood is false, then the user is sad and the message is printed out
+
+```{r}
+
+#generate_DNA(length) takes an input length and makes a random DNA sequence of that length. now collapse can be specified to return the DNA as one word (default) or as a list of nucleotide characters. there is a mood argument where true is happy and no sad message is printed as default, but if mood is set to false then a sad message is printed
+
+generate_DNA <- function(length, collapse = TRUE, mood=TRUE) {
+  
+#take length number of random samples from the list of nucleotides with replacement
+dna <- sample(c('A', 'T', 'G', 'C'), size = length, replace = TRUE)
+
+#print out a single element vector by concatenating the characters from the random sampling together into one word only if collapse is TRUE
+if(collapse) {
+  dna <- paste(dna, collapse = "")
+}
+
+#print out a message that the user is sad is the mood parameter is set to false
+if(mood == FALSE){
+  cat("user is sad :(\n")
+}
+return(dna)
+}
+
+generate_DNA(6)
+generate_DNA(6, mood = FALSE)
+
+```
+
+Generate a protein of any length
+
+```{r}
+
+#generate_protein() takes an input length and then samples that number of amino acids from a list of amino acids with replacement. it then concatenates the amino acids into one word using paste
+generate_protein <- function(length, collapse = FALSE) {
+  amino_acids <- c("A", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "V", "W", "Y")
+  protein <- sample(amino_acids, length, replace=TRUE)
+  if(collapse){
+    protein <- paste(protein, collapse="")
+  }
+  return(protein)
+}
+
+#test out the function
+generate_protein(20, collapse = TRUE)
+```
+Generate protein sequences from length 6 to 12 amino acids long
+
+```{r}
+#make a vector of lengths from 6 to 12 amino acids long
+prot_lens <- c(6:12)
+
+#use sapply to apply the generate_protein function to the prot_lens list. sapply will apply the function to each element in the list and simply the output. 
+myseqs <- sapply(prot_lens, generate_protein, collapse=TRUE)
+myseqs
+```
+
+Are any of the sequences unique in the sense that they have never been found in nature?
+
+To make this accessible, lets get our sequences in FASTA format. 
+FASTA format looks like this
+
+>id.6
+MTRFDEEASWYT
+>id.7
+MHTYPMNNG
+
+The functions paste() and cat() will help here
+```{r}
+cat(paste(">id.",6:12, "\n" , myseqs, "\n", sep = ""), sep="")
+```
+
+When I blast these sequences, at sequence length = 9, the percent identity and coverage are not both 100%, indicating that this sequence is not seen in nature 
+
+```{r}
+#install.packages("bio3d")
+#library(bio3d)
+#myseqs <- sapply(prot_lens, generate_protein, collapse=TRUE)
+#as.matrix(myseqs)
+#x <- as.fasta(as.matrix(myseqs))
+#x
+```
+
+
+
+
+>Q1. Write a function grade() to determine an overall grade from a vector of student homework
+ assignment scores dropping the lowest single score. If a student misses a homework (i.e. has an
+ NA value) this can be used as a score to be potentially dropped. Your final function should be
+ adquately explained with code comments and be able to work on an example class gradebook
+ such as this one in CSV format: “https://tinyurl.com/gradeinput” 
+ 
+```{r}
+#grade is a function that takes a list of grades that contain numbers and NAs for missed assignments
+
+grade <- function(grades) {
+  
+  #grades_sorted is a list of the grades sorting from the highest grade to the lowest grade with NAs at the end of the list
+  grades_sorted <- sort(grades, decreasing = TRUE, na.last = TRUE)
+  
+  #grades_dropped removes the last grade in grades_sorted to drop the lowest grade, which will be a misssed assignment (NA) if there are any missed assignments
+  grades_dropped <- grades_sorted[1:length(grades_sorted)-1]
+  
+  #the average of the grades after the lowest score is removed is calculated. First the sum of the grades minus the lowest grade is calculated and NAs are removed to count them as 0s in the gradebook. Then the sum is divided by the length of the grades_dropped vector to include the missed assignments in the average. if I just did mean(grades_dropped, na.rm = TRUE), then the misssed assignments would not count at all towards the final grade
+  return(sum(grades_dropped, na.rm = TRUE) / length(grades_dropped))
+}
+
+#testing the grade function with vectors that have 0, 1, or multiple NAs and making sure the NAs are counted as 0s in the gradebook
+grade(c(98, 75, 43, 50))
+grade(c(87, NA, 54, 100, 78))
+grade(c(87, 0, 54, 100, 78))
+grade(c(100, NA, 99, 102, NA, 34))
+grade(c(100, 0, 99, 102, 0, 34))
+
+
+#making sure the grade function can work on vectors from the gradebook csv
+gradebook <- read.csv("https://tinyurl.com/gradeinput")
+
+#the grade_csv has rows of students and columns for each homework assignment. I ran head(grade_csv) once, but I commented it out since I don't need to run it every time
+#head(grade_csv)
+
+#you have to convert the row from the dataframe to a numeric vector before passing it to grade().You also have to remove the first column since that has the student information, which should not be counted in the grading
+grade(as.numeric(as.vector(gradebook[1, -1])))
+
+
+```
+Q2. Using your grade() function and the supplied gradebook, Who is the top scoring student overall in the gradebook? 
+
+student-18 is the top scoring student overall with an overall score of 94.5
+
+```{r}
+#load in the gradebook from the link as a dataframe
+gradebook <- read.csv("https://tinyurl.com/gradeinput")
+
+#make a column in the gradebook dataframe that contains the overall grade calculated by the grade() function. I used the apply function for this. I passed the gradebook data frame to apply, and I also exlcuded the first column since that has the student name information and does not need to be included in the grade calculation. I told it to apply the supplied function row-wise through the dataframe (MARGIN = 1 in the apply function), and gave it the grade() function to apply to each row.  In addition, I converted each row of the gradebook dataframe to a numeric vector before applying the grade() function.
+gradebook$overall_grade <- apply(gradebook[,-1], 1, function(x) grade(as.numeric(as.vector(x))))
+
+#sort the gradebook by the overall_grade column. I set the decreasing to true so that the top scorer would be the first row
+sorted_gradebook <- gradebook[order(gradebook$overall_grade, decreasing = TRUE),]
+
+#print out the first row of the sorted gradebook, which will contain the student with the top overall score
+sorted_gradebook[1,]
+```
+
+
+Q3. From your analysis of the gradebook, which homework was toughest on students (i.e. obtained the lowest scores overall? 
+ 
+```{r}
+avg_nas <- function(scores){
+  sum <- sum(scores, na.rm = TRUE)
+  length <- length(scores)
+  return(sum/length)
+}
+gradebook.t <- t(gradebook)
+gradebook.t$hw_avg <- apply(gradebook.t, 1, function(x) avg_nas(as.numeric(as.vector(x))))
+gradebook.t$hw_avg
+```
+

@@ -1,0 +1,420 @@
+---
+title: "class08"
+author: "Isabella Ruud: PID A59016138"
+format: pdf
+toc: true
+---
+
+### Load the data
+
+Today we will practice applying our PCA and clustering methods from the last class on some breast cancer FNA data. 
+
+First, let's get the data into R
+
+```{r}
+# Save your input data file into your Project directory
+fna.data <- "WisconsinCancer.csv"
+
+# Complete the following code to input the data and store as wisc.df
+wisc.df <- read.csv(fna.data, row.names=1)
+
+head(wisc.df)
+```
+
+
+>Q1. How many patients/samples are in this dataset?
+
+```{r}
+nrow(wisc.df)
+```
+
+There are `r nrow(wisc.df)` samples in this dataset. 
+
+>Q2. How many cancer/non-cancer samples samples are in the dataset?
+
+```{r}
+table(wisc.df$diagnosis)
+```
+
+The `table()` function is super useful for counting up the number of observations of each type.
+
+There are 357 benign and 212 malignant patient samples. 
+
+How many columns/dimensions are in this dataset?
+
+```{r}
+ncol(wisc.df)
+```
+
+There are 31 columns, or 30 columns once you remove the diagnosis column.
+
+>Q3. How many columns are suffixed with "_mean"?
+The `grep()` function can help with pattern matching here
+
+```{r}
+length(grep("_mean", colnames(wisc.df)))
+```
+There are 10 columns that are suffixed with _mean.
+
+### Cluster the dataset
+
+Let's try a `hclust()`
+
+First, emove the diagnosis column (the first column) since we don't want to include it in the PCA or clustering
+
+```{r}
+
+# We can use -1 here to remove the first column
+wisc.data <- wisc.df[,-1]
+
+# Create diagnosis vector for later 
+diagnosis <- wisc.df$diagnosis
+```
+
+```{r}
+hc.raw <- hclust(dist(wisc.data))
+plot(hc.raw)
+```
+To get some clusters, I can use cutree() to cut the tree at a given height
+
+```{r}
+grps <- cutree(hc.raw, h=4000)
+table(grps)
+```
+
+To see the correspondance of our cluster groups `grps` with the expert `diagnosis` i can use table() again.
+
+```{r}
+table(grps,diagnosis)
+```
+
+That is not a useful clustering result...
+
+### Principal Component Analysis (PCA)
+
+Scaling data before analysis is often critical. 
+
+Side note: the default for `prcomp()` is `scale=FALSE`
+There is a dataset in R called `mtcars` which has loads of numbers about old cars. The means and standard deviations in each column vary a lot from column to column. The disp and hp columns will dominate the analysis because they have high values
+
+
+```{r}
+colMeans(mtcars)
+```
+```{r}
+apply(mtcars, 2, sd)
+```
+Let's see what the effect of scaling is on the PCA
+
+```{r}
+pc.noscale <- prcomp(mtcars, scale=FALSE)
+pc.scale <- prcomp(mtcars, scale=TRUE)
+
+```
+
+let's look at the loadings first
+```{r}
+pc.noscale$rotation
+pc.scale$rotation
+```
+
+```{r}
+library(ggplot2)
+ggplot(pc.noscale$rotation) + aes(PC1, rownames(pc.noscale$rotation)) + geom_col()
+```
+
+```{r}
+ggplot(pc.scale$rotation) + aes(PC1, rownames(pc.scale$rotation)) + geom_col()
+```
+The scaled one looks much more equal in distribution
+
+The main PC result figure is called a score plot or PC plot or PC1 vs PC2 plot
+
+```{r}
+ggplot(pc.noscale$x) + aes(PC1, PC2, label = rownames(pc.noscale$x)) +
+  geom_point() + geom_label() + labs(title="not scaled")
+```
+
+```{r}
+library(ggrepel)
+ggplot(pc.scale$x) + aes(PC1, PC2, label = rownames(pc.scale$x)) +
+  geom_point() + geom_label() + geom_label_repel() + labs(title = "scaled")
+```
+
+The no scale PCA plot is dominated by horsepower, whereas there are more relationships shown in the scaled PCA
+
+```{r}
+x <- scale(mtcars)
+colMeans(x)
+round(colMeans(x))
+round(apply(x,2,sd))
+```
+
+**Key point**: generally we want to scale our data before analysis to avoid being misled due to your data having different measurement units
+
+### Breast Cancer PCA
+
+We will scale our data. Can check the means and standard deviations of the columns to see if they are different to determine if we need to scale.
+```{r}
+pca <- prcomp(wisc.data, scale=TRUE)
+
+```
+
+>Q4. What proportion of the original variance is captured by PC1?
+  
+PC1 captures 44% of the variance
+
+>Q5. How many principal components capture 70% of the variance?
+
+You need 3 principal components to capture at least 70% of the variance.
+
+>Q6. How many principal components capture 90% of the variance?
+
+You need 7 principal components to capture at least 90% of the variance.
+  
+See how well we are doing:
+```{r}
+summary(pca)
+```
+
+>Q7. What stands out about this plot? Is it easy to understand?
+
+This plot is very difficult to interpet since there are numbers and arrows in one big mess. We will have to use other plotting methods to more clearly understand the PCA model.
+
+```{r}
+biplot(pca)
+```
+
+
+
+Our PC plot
+
+```{r}
+ggplot(pca$x) +
+  aes(PC1, PC2, col = diagnosis) + 
+  geom_point() +
+  xlab("PC1 (44.3%)") +
+  ylab("PC2 (18.9%)")
+```
+
+>Q8. Generate a similar plot for principal components 1 and 3. What do you notice about these plots?
+
+There is a similar grouping between malignant and benign, but the boundaries between the groups are a little less clear and there is some mixing of blue and red points where the groups meet.
+
+```{r}
+ggplot(pca$x) +
+  aes(PC1, PC3, col = diagnosis) + 
+  geom_point() +
+  xlab("PC1 (44.3%)") +
+  ylab("PC3 (9.3%)")
+```
+
+>Q9. For the first principal component, what is the component of the loading vector (i.e. wisc.pr$rotation[,1]) for the feature concave.points_mean? This tells us how much this original feature contributes to the first PC.
+
+The concave.points_mean is -0.26085376 for the the first PC. 
+
+```{r}
+pca$rotation[,1]
+```
+
+
+How many PCs capture 80% of the original variance in the dataset?
+
+```{r}
+summary(pca)
+```
+From the summary, we can see that it takes 4 PCs to cover 79% of the variance, or 5 PCs to cover 84% of the variance 
+
+```{r}
+plot(pca)
+```
+
+Use ggplot to plot a scree plot of the variance per PC
+
+```{r}
+attributes(pca)
+```
+
+We can extract the sdev and square it to figure out the variance. the sum of the variance should be 30 because we scaled our data and there are 30 columns
+
+```{r}
+v <- pca$sdev^2
+sum(v)
+```
+
+The proportion of variance captured in each PC
+
+```{r}
+round(v/sum(v),2)
+```
+
+Cumulative variance captured
+
+```{r}
+cumsum(v/sum(v))
+```
+How many PCs capture 80% of the variance? 
+```{r}
+cumsum(v/sum(v)) > 0.8
+which(cumsum(v/sum(v)) > 0.8)
+```
+
+
+
+```{r}
+#install.packages("factoextra")
+library(factoextra)
+fviz_eig(pca, addlabels = TRUE)
+```
+
+### Combine PCA and clustering
+
+We saw earlier that clustering the raw data alone did not provide useful results
+
+We can use our new PC variables (our PCs) as a basis for clustering. Use $x (PC scores) and use some of the PCs to do the clustering (if you use all of them, then it's like the clustering from before). We will cluster in the PC1 and PC2 subspace
+
+```{r}
+hc.pca <- hclust(dist(pca$x[,1:2]), method="ward.D2")
+plot(hc.pca)
+abline(h=70, col="blue")
+```
+>Q10. Using the plot() and abline() functions, what is the height at which the clustering model has 4 clusters?
+
+```{r}
+plot(hc.pca)
+abline(h=36.6, col="red", lty=2)
+```
+
+
+```{r}
+wisc.hclust.clusters <- cutree(hc.pca, h=36.6)
+table(wisc.hclust.clusters, diagnosis)
+```
+
+>Q12. Which method gives your favorite results for the same data.dist dataset? Explain your reasoning.
+
+ward.D2 is my favorite method because it is the simplest tree and starts by splitting in half into two relatively even branches. The other methods very quickly separate into many branches.
+
+```{r}
+hc.pca <- hclust(dist(pca$x[,1:2]), method="single")
+plot(hc.pca)
+```
+
+```{r}
+hc.pca <- hclust(dist(pca$x[,1:2]), method="complete")
+plot(hc.pca)
+```
+
+```{r}
+hc.pca <- hclust(dist(pca$x[,1:2]), method="average")
+plot(hc.pca)
+```
+
+>Q13. How well does the newly created model with four clusters separate out the two diagnoses?
+
+Does your clustering help separate cancer from non-cancer? (ie diagnosis M vs B)
+
+```{r}
+grps <- cutree(hc.pca, h=70)
+table(grps, diagnosis)
+```
+Yes, group 1 is mostly M (cancer) and group 2 is mostly B (benign), although the clustering is not perfect
+
+
+>Q15. OPTIONAL: Which of your analysis procedures resulted in a clustering model with the best specificity? How about sensitivity?
+
+Positive cancer samples "M" 
+Negative non-cancer samples "B"
+
+True our cluster/group 1
+False our cluster/group 2
+
+How many true positives do we have? 
+  177 true positives  
+
+How many false positives do we have?
+  35 false positives 
+  
+Sensitivity: true positives/(true positives + false negatives)
+  177/(177 + 339) = 0.52
+Specificity: true positives/(true negatives + false negatives)
+  177(18 + 339) = 0.5
+
+
+>Q14. How well do the hierarchical clustering models you created in previous sections (i.e. before PCA) do in terms of separating the diagnoses? Again, use the table() function to compare the output of each model (wisc.km$cluster and wisc.hclust.clusters) with the vector containing the actual diagnoses.
+
+Without using the PCA model, the clustering is not very good since most of the benign and malignant diagnoses fall into the same group. Once you use the PCA in addition to the hierarchical clustering, the malignant and benign diagnoses start to separate into 2 different groups. 
+
+```{r}
+#clustering from before the PCA model
+grps <- cutree(hc.raw, h=4000)
+table(grps, diagnosis)
+```
+
+
+### Prediction with our PCA model
+
+
+>Q16. Which of these new patients should we prioritize for follow up based on your results?
+
+We can take new data (in this case from UofM) and project it onto our new variables (PCs)
+
+load data
+```{r}
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+```
+
+projection
+```{r}
+npc <- predict(pca, newdata=new)
+```
+
+Base R plot
+```{r}
+plot(pca$x[,1:2], col=grps)
+
+#add the new points
+points(npc[,1], npc[,2], col="blue", pch=16, cex=3)
+text(npc[,1], npc[,2], c(1,2), col="white")
+```
+Patient 2 looks like they could have a malignant sample, so we should follow up with them
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
