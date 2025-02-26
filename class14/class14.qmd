@@ -1,0 +1,349 @@
+---
+title: "Class14"
+author: "Isabella Ruud PID: A59016138"
+format: pdf
+toc: true
+---
+
+#Background
+The data for for hands-on session comes from GEO entry: GSE37704, which is associated with the following publication:
+
+  Trapnell C, Hendrickson DG, Sauvageau M, Goff L et al. "Differential analysis   of gene regulation at transcript resolution with RNA-seq". Nat Biotechnol 2013   Jan;31(1):46-53. PMID: 23222703
+  
+The authors report on differential analysis of lung fibroblasts in response to loss of the developmental transcription factor HOXA1. Their results and others indicate that HOXA1 is required for lung fibroblast and HeLa cell cycle progression. In particular their analysis show that "loss of HOXA1 results in significant expression level changes in thousands of individual transcripts, along with isoform switching events in key regulators of the cell cycle". For our session we have used their Sailfish gene-level estimated counts and hence are restricted to protein-coding genes only.
+
+# Data Import 
+
+Reading in the counts and the metadata
+
+```{r}
+counts <- read.csv("GSE37704_featurecounts.csv", row.names = 1)
+metadata <- read.csv("GSE37704_metadata.csv")
+
+head(counts)
+head(metadata)
+```
+
+
+## Tidy and verify data
+
+> Q. How many genes are in this dataset?
+
+```{r}
+nrow(counts)
+```
+
+There are 19808 genes 
+
+> Q. How many control and knockdown experiments are there?
+
+```{r}
+table(metadata$condition)
+```
+
+There are 3 control and 3 knockdown experiments
+
+> Q. Does the metadata match the countdata?
+
+```{r}
+colnames(counts)
+metadata$id
+```
+No, there is an extra column in the countdata ('length')
+
+### Fix countdata to match coldata/metadata
+
+```{r}
+newcounts <- as.matrix(counts[,-1])
+head(newcounts)
+```
+
+```{r}
+colnames(newcounts) == metadata$id
+```
+
+
+## Remove zero count genes
+
+```{r}
+rows_to_keep <- rowSums(newcounts) != 0
+countData <- newcounts[rows_to_keep,]
+head(countData)
+```
+
+
+# PCA quality control
+
+We can use prcomp() function for this
+
+```{r}
+pca <- prcomp(t(countData), scale = TRUE)
+summary(pca)
+```
+
+Color by control or knockdown
+```{r}
+metadata$condition
+mycols <- c(rep("blue",3), rep("orange", 3))
+mycols
+```
+
+
+```{r}
+library(ggplot2)
+
+ggplot(pca$x) + 
+  aes(x = PC1, y = PC2) +
+  geom_point(col=mycols)
+```
+
+> Q. How many genes are left after filtering?
+
+```{r}
+nrow(countData)
+```
+
+There are 15975 genes left
+
+# DESeq analysis
+
+```{r}
+#! message: false
+library(DESeq2)
+```
+
+
+## Setup the DESeq input object
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = countData,
+                              colData = metadata,
+                              design = ~condition)
+```
+
+
+## Run DESeq
+
+```{r}
+dds <- DESeq(dds)
+```
+
+
+## Extract the results
+
+```{r}
+res <- results(dds)
+```
+
+```{r}
+head(res)
+```
+```{r}
+summary(res)
+```
+
+
+# Volcano plot 
+
+```{r}
+mycols <- rep("gray", nrow(res))
+mycols[res$log2FoldChange >= 2] <- "red"
+mycols[res$log2FoldChange <= -2] <- "blue"
+mycols[res$padj >= 0.005] <- "grey"
+
+
+ggplot(res) +
+  aes(x=log2FoldChange, y = -log(padj)) +
+  geom_point(col = mycols) +
+  labs(x= "log2(Fold Change)", y= "-log(p value)") +
+  geom_vline(xintercept = c(-2,2), col = "black") +
+  geom_hline(yintercept = -log(0.005), col = "black")
+```
+
+
+
+# Add gene annotations
+
+We want to add gene symbols and entrez id values to our results
+
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+```
+```{r}
+columns(org.Hs.eg.db)
+```
+
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db,
+                     keys = row.names(res),
+                     keytype = "ENSEMBL",
+                     column = "SYMBOL",
+                     multiVals = "first")
+res$entrez <- mapIds(org.Hs.eg.db,
+                     keys = row.names(res),
+                     keytype = "ENSEMBL",
+                     column = "ENTREZID",
+                     multiVals = "first")
+```
+
+
+
+
+# Save Results
+
+```{r}
+write.csv(res, file = "myresults.csv")
+```
+
+
+# Pathway analysis
+
+```{r}
+#! message: false
+library(gage)
+library(gageData)
+library(pathview)
+```
+
+
+## KEGG
+
+```{r}
+data(kegg.sets.hs)
+```
+
+```{r}
+head(kegg.sets.hs, 1)
+```
+
+Make an input vector for gage() called foldchanges that has names() attributes set to entrez ids
+```{r}
+foldchanges <- res$log2FoldChange
+names(foldchanges) <- res$entrez
+```
+
+```{r}
+keggres <- gage(foldchanges, gsets=kegg.sets.hs)
+```
+
+```{r}
+attributes(keggres)
+```
+```{r}
+head(keggres$less, 2)
+```
+
+```{r}
+pathview(foldchanges, pathway.id = "hsa04110")
+```
+![Cell cycle is affected](hsa04110.pathview.png)
+
+```{r}
+pathview(foldchanges, pathway.id = "hsa03030")
+```
+
+![DNA replication](hsa03030.pathview.png)
+
+```{r}
+head(keggres$greater, 2)
+```
+
+
+```{r}
+pathview(foldchanges, pathway.id = "hsa04060")
+```
+![Cytokine-cytokine receptor interaction](hsa04060.pathview.png)
+
+
+## GO
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+#focus just on GO BP (biological process)
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
+
+lapply(gobpres, head)
+```
+
+```{r}
+head(gobpres$less)
+```
+
+```{r}
+head(gobpres$greater)
+```
+
+## Reactome analysis
+
+We can use reactome via R or via their website interface. the web interface wants a set of ENTREZ ID values for your genes of interest. let's generate that
+
+```{r}
+inds <- abs(res$log2FoldChange) >= 2 & res$padj <= 0.05
+top.genes <- res$entrez[inds]
+```
+
+```{r}
+write.table(top.genes, file = "top_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+
+Cell cycle, mitotic has the most significant p value entities
+Cell cycle, mitotic spindle checkpoint, and cell cycle checkpoints also are at the top of the list
+
+This is in line with the kegg analysis result of the cell cycle pathway being affected, but the kegg analysis also had other pathways implicated as well. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

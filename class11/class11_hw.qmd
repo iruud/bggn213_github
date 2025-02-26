@@ -1,0 +1,89 @@
+---
+title: "Class11 HW"
+author: "Isabella Ruud PID A59016138"
+format: pdf
+---
+
+>Q13: Read this file into R and determine the sample size for each genotype and their corresponding median expression levels for each of these genotypes. 
+
+Hint: The read.table(), 
+summary() and boxplot() functions will likely be useful here. There is an example R script online to be used ONLY if you are struggling in vein.  Note that you can find the medium value from saving the output of the boxplot() function to an R object and examining this object. There is also the medium() and summary() function that you can use to check your understanding. 
+
+```{r}
+#read in txt file 
+expr <- read.table("sample geno exp.txt")
+
+#look at file to make sure it looks okay
+head(expr)
+
+#get the sample size for each genotype
+table(expr$geno)
+```
+
+There are 108 A/A genotypes, 233 A/G genotypes, and 121 G/G genotypes.
+
+
+```{r}
+#get the median expression values for each genotype
+aa_median <- median(expr[expr$geno == "A/A",]$exp)
+ag_median <- median(expr[expr$geno == "A/G",]$exp)
+gg_median <- median(expr[expr$geno == "G/G",]$exp)
+
+cat("A/A expression median: ", aa_median, "\n")
+cat("A/G expression median: ", ag_median, "\n")
+cat("G/G expression median: ", gg_median, "\n")
+```
+
+A/A expression median:  31.24847 
+A/G expression median:  25.06486 
+G/G expression median:  20.07363 
+
+```{r}
+#can also get the summary stats (mean, median, quartiles, etc)
+cat("A/A genotype:", "\n")
+summary(expr[expr$geno == "A/A",])
+
+cat("A/G genotype:", "\n")
+summary(expr[expr$geno == "A/G",])
+
+cat("G/G genotype:", "\n")
+summary(expr[expr$geno == "G/G",])
+
+```
+
+>Q14: Generate a boxplot with a box per genotype, what could you infer from the relative expression value between A/A and G/G displayed in this plot? Does the SNP effect the expression of ORMDL3? 
+
+Hint: An example boxplot is provided overleaf – yours does not need 
+to be as polished as this one.  
+
+```{r}
+library("ggplot2")
+```
+
+
+```{r}
+#make a box plot of the ORDML3 expression data for each genotype
+
+ggplot(expr) +
+  aes(x = geno, y = exp, fill = geno) +
+  geom_boxplot(notch = TRUE) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.25) +
+  labs(x="Genotype", y = "Expression", title = "SNP Effect on ORDML3 Expression", fill = "Genotype") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Yes, the SNP has an effect on the relative expression of ORDML3. The A/A genotype has the highest expression and the G/G genotype has the lowest expression with A/G sitting in between them. It seems that as the number of G alleles increases, the expression of ORDML3 decreases. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

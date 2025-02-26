@@ -1,0 +1,270 @@
+---
+title: "Class_10"
+author: "Isabella Ruud PID: 59016138"
+format: pdf
+toc: true
+---
+
+## THe PDB database
+
+
+The main repository for biomolecular data is called the PDB (protein data bank) and can be found at: https://www.rcsb.org/
+
+Let's see what it contains in terms of molecule and method of structure determination (Analyze > PDB stats > By Mol type and method)
+
+```{r}
+pdbstats <- read.csv("Data Export Summary.csv")
+head(pdbstats)
+```
+
+Need to get rid of the commas using sub in the numbers and then convert the chars to ints using as.numeric
+```{r}
+as.numeric(sub(",", "", pdbstats$X.ray))
+```
+
+Or can use readr package instead
+
+```{r}
+library(readr)
+pdbstats <- read_csv("Data Export Summary.csv")
+head(pdbstats)
+```
+
+Now need to rename the column names so that they do not have spaces or mixes up upper/lower case. Can use janitor package for this and its clean_names() function for this
+
+```{r}
+library(janitor)
+colnames(pdbstats)
+pdbstats <- clean_names(pdbstats)
+```
+
+
+> Q1: What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+```{r}
+xray <- sum(pdbstats$x_ray)
+EM <- sum(pdbstats$em)
+total <- sum(pdbstats$total)
+
+percent_xray <- xray / total
+percent_EM <- EM / total
+
+paste("percent x ray: ", percent_xray)
+paste("percent EM: ", percent_EM)
+```
+
+82.8% of structures in the PDB are solved by X-ray
+10.7% of structures are solved by electron miscroscopy
+
+>Q2: What proportion of structures in the PDB are protein?
+
+```{r}
+round(pdbstats$total[1]/total * 100, digits=2)
+
+```
+
+86.24% of structurs in the PDB are protein
+
+
+There are 253,206,171 proteins in UniProt and there are only 231,029 known structures in in the PDB. this is a tiny fraction!
+
+```{r}
+total/253206171
+```
+
+In the next lab we will use prediction methods that approach the accuracy of xray crystallography.
+
+
+## Molecular visualization with Mol*
+
+>Q3: Type HIV in the PDB website search box on the home page and determine how many HIV-1 protease structures are in the current PDB?
+
+
+There are 5 HIV-1 protease structures
+
+Mol-star is a new online structure viewer that is taking over the world of biomolecular visualization. let's see how to use it from https://molstar.org/
+
+My first image from Mol* of 1HSG
+
+![Fig 1. A first view of the HIV-pr dimer](1HSG.png)
+
+
+>Q4: Water molecules normally have 3 atoms. Why do we see just one atom per water molecule in this structure?
+
+The structure was solved with a resolution of 2 angstrom, and since hydrogen atoms are so small, they are not seen in the structure even though they are actually supposed to be there
+
+
+>Q5: There is a critical “conserved” water molecule in the binding site. Can you identify this water molecule? What residue number does this water molecule have
+
+Yes, it forms 2 hydrogren bonds with the ligand and 2 hydrogen bonds with the protease. It is called HOH308
+
+
+> Q6: Generate and save a figure clearly showing the two distinct chains of HIV-protease along with the ligand. You might also consider showing the catalytic residues ASP 25 in each chain and the critical water (we recommend “Ball & Stick” for these side-chains). Add this figure to your Quarto document.
+
+I want an image of the binding cleft for the MK1 inhibitor, and image of the most valubale water in human history, and an image showing the catalytic ASP amino acid.
+
+
+![Fig 2a. Substrate binding cleft](1HSG_substrate_binding_cleft.png)
+
+![Fig 2b. Substrate binding cleft, ligand space fill](1HSG_substrate_binding_cleft_spacefill.png)
+
+![Fig 3. Important water molecule and catalytic aspartic acids](1HSG_aspartic_acids_water.png)
+
+![Fig 3a. Important water molecule and catalytic aspartic acids, ball and stick](1HSG_aa_water_ball.png)
+
+## Section 3: Using the Bio3d package
+
+This package has tons of tools and utilities for structural bioinformatics.
+
+Can read in from the online databank if you give it an accession number
+
+```{r}
+library(bio3d)
+hiv <- read.pdb("1hsg")
+hiv
+```
+
+
+>Q7: How many amino acid residues are there in this pdb object? 
+
+198 amino acid residues in the pbd object
+
+Can easily get the sequence out. 
+How long is this sequence/how many amino acids are in the structure? 
+```{r}
+s <- pdbseq(hiv)
+length(s)
+```
+
+The sequence is 198 amino acids long
+
+> Q8: Name one of the two non-protein residues?
+
+MK1 is one of the two non-protein residues
+
+> Q9: How many protein chains are in this structure? 
+
+There are 2 protein chains
+
+```{r}
+head(hiv$atom)
+```
+
+
+## Predict the functional motions
+
+Let's read a new structure "6s36"
+
+```{r}
+pdb <- read.pdb("6s36")
+pdb
+```
+
+We can run a NMA calculation on this structure:
+
+```{r}
+m <- nma(pdb)
+plot(m, sse=pdb)
+```
+
+
+We can write out a trajectory of the predicted dynamics using mktrj() function
+
+```{r}
+mktrj(m, file="results.pdb")
+```
+
+
+## Section 4: Comparative analysis
+
+> Q10. Which of the packages above is found only on BioConductor and not CRAN?
+
+the msa package
+
+> Q11. Which of the above packages is not found on BioConductor or CRAN?
+
+the bio3d-view package
+
+> Q12. True or False? Functions from the devtools package can be used to install packages from GitHub and BitBucket?
+
+True
+
+
+```{r}
+aa <- get.seq("1ake_A")
+aa
+```
+Search the PDB database for related sequences
+```{r}
+#| cache: true
+blast <- blast.pdb(aa)
+hits <- plot(blast)
+```
+
+see the hits from the blast
+
+```{r}
+hits
+```
+
+```{r}
+head(blast$raw)
+```
+download all these structures to our project directory
+```{r}
+hits$pdb.id
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+```
+
+Align and supperpose
+
+```{r}
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+
+```
+
+PCA analysis of the aligned structures
+
+```{r}
+pc.xray <- pca(pdbs)
+plot(pc.xray)
+```
+
+```{r}
+plot(pc.xray, pc.axes = c(1,2))
+```
+
+We can view the main PC1 cpatured displacements with the mktrj() function
+
+```{r}
+pc1 <- mktrj(pc.xray, pc=1, file="pc_1.pdb")
+```
+
+
+```{r}
+modes <- nma(pdbs)
+```
+```{r}
+rd <- rmsd(pdbs)
+
+# Structure-based clustering
+hc.rd <- hclust(dist(rd))
+grps.rd <- cutree(hc.rd, k=3)
+
+plot(pc.xray, 1:2, col="grey50", bg=grps.rd, pch=21, cex=1)
+```
+
+
+```{r}
+plot(modes, pdbs, col=grps.rd)
+```
+
+
+>Q14. What do you note about this plot? Are the black and colored lines similar or different? Where do you think they differ most and why?
+
+The black and colored lines are similar in some areas but very different in others.
+The black and colored lines are the most similar over the alpha helix and beta sheet secondary structure regions (black and gray bars) and they are the most different over the loop regions (white spaces between bars). 
+
+
+
+
