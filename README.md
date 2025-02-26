@@ -7,4 +7,4 @@ Winter 2025 class content
 
 - Class 05 Data vis with ggplot2
 
-- Class 06 
+- Class 06 R functions
