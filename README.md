@@ -23,12 +23,14 @@ Winter 2025 class content
 
 - Class 13 [RNA Seq intro](class13/class13.html)
 
+- Class 15 Hands-on with Git and Github
+
 - Class 14 [RNASeq mini project](class14/class14.html)
 
-- Class 16 [Essential UNIX for bioinformatics]()
+- Class 16 [Essential UNIX for bioinformatics](https://github.com/iruud/bggn213_github/blob/main/class16/class16.pdf)
 
-- Class 17 [Analyzing sequencing data in the cloud]()
+- Class 17 [Analyzing sequencing data in the cloud](class17/Class17.html)
 
-- Class 18 [Mini Project: Investigating Pertussis Resurgence]()
+- Class 18 [Mini Project: Investigating Pertussis Resurgence](class18/class18.html)
 
-- Class 19 [Mini Project: Cancer Mutation Analysis]()
+- Class 19 [Mini Project: Cancer Mutation Analysis](class19/class19.html)
