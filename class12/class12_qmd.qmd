@@ -1,7 +1,7 @@
 ---
 title: "Finishing up Class 10 and Class 12"
 author: "Isabella Ruud: PID A59016138"
-format: pdf
+format: html
 ---
 
 Let's finish off class 10 with a pipeline for comparative structure analysis. 

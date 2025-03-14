@@ -1,0 +1,444 @@
+---
+title: "Finishing up Class 10 and Class 12"
+author: "Isabella Ruud: PID A59016138"
+format: html
+---
+
+
+
+Let's finish off class 10 with a pipeline for comparative structure analysis. 
+
+
+
+```{r}
+library(bio3d)
+```
+
+```{r}
+id <- "1ake_A"
+aa <- get.seq(id)
+aa
+```
+
+
+
+lets search for related sequences in the PDB database
+
+
+
+```{r}
+blast <- blast.pdb(aa)
+```
+
+
+
+Let's plot an overview of the search results
+
+
+
+```{r}
+hits <- plot(blast)
+```
+
+
+
+
+let's see what the top hits are
+
+
+
+```{r}
+hits$pdb.id
+```
+
+
+
+We can download all of these with the 'get.pdb()' function:
+
+
+
+```{r}
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+```
+
+
+
+Align the PDBs
+
+
+
+```{r}
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+```
+
+
+
+## Conventional analysis
+
+An RMSD analysis
+
+
+
+```{r}
+rd <- rmsd(pdbs)
+```
+
+```{r}
+library(pheatmap)
+pheatmap(rd)
+```
+
+```{r}
+source("https://tinyurl.com/newviewngl")
+library(NGLVieweR)
+```
+
+```{r}
+#view.pdbs(pdbs)
+```
+
+
+
+We can cluster by RMSD and then color our structure display
+
+
+
+```{r}
+km <- kmeans(rd, centers=2)
+mycols <- c("red", "blue")[km$cluster]
+```
+
+```{r}
+#view.pdbs(pdbs, color = mycols)
+```
+
+
+
+## Principal Component analysis
+
+
+
+```{r}
+pc <- pca(pdbs)
+plot(pc, col=mycols)
+```
+
+```{r}
+p <- mktrj(pc, file = "pca.pdb")
+p <- read.pdb("pca.pdb", multi = T)
+#view.pdb(p)
+```
+
+```{r}
+ref <- read.pdb("1ake")
+#view.pdb(ref)
+```
+
+
+
+
+## AlphaFold Analysis
+
+Here we demonstrate how to analyze and make sense of models from AlphaFold. We begin by reading in all the model PDB files
+
+
+
+```{r}
+library(bio3d)
+files <- list.files("./hiv_monomer_94b5b", pattern = ".pdb", full.names = T)
+files
+```
+
+
+
+align and superpose
+
+
+
+```{r}
+pbds <- pdbaln(files, fit=TRUE, exefile = "msa")
+```
+
+```{r}
+source("https://tinyurl.com/newviewngl")
+library(NGLVieweR)
+#view.pdbs(pdbs)
+```
+
+
+
+
+
+RMSD analysis
+
+
+
+```{r}
+rd <- rmsd(pdbs)
+summary(rd)
+```
+
+```{r}
+library(pheatmap)
+
+pheatmap(rd)
+```
+
+
+
+
+
+PCA
+
+
+
+```{r}
+pc <- pca(pdbs)
+plot(pc)
+```
+
+
+
+# Residue conservation from alignment file
+
+AlphaFold writes out the MSA it calculated and used for structure prediction to a A3M format file that we can read into R for further analysis
+
+
+
+```{r}
+aln_file <- list.files("hiv_monomer_94b5b/", pattern = ".a3m$", full.names = TRUE)
+aln_file
+```
+
+```{r}
+aln <- read.fasta(aln_file, to.upper=TRUE)
+```
+
+```{r}
+dim(aln$ali)
+```
+
+```{r}
+sim <- conserv(aln)
+```
+
+```{r}
+con <- consensus(aln, cutoff = 0.9)
+con$seq
+```
+
+
+
+Plot the conservation along the sequence/structure
+
+
+
+```{r}
+plot(sim,typ="h")
+```
+
+
+
+Let's look at these conserved positions
+
+
+
+```{r}
+pdb <- read.pdb(files[1])
+#view.pdb(pdb, backgroundColor="pink", 
+         #highlight = atom.select(pdb, resno=25:28),   highlight.style="spacefill") 
+```
+
+
+
+
+## HIV dimer
+
+Read in the pdb files that alphafold gave
+
+
+```{r}
+results_dir <- "hiv_dimer_23119.result/hiv_dimer_23119/" 
+pdb_files <- list.files(path=results_dir,
+                        pattern="*.pdb",
+                        full.names = TRUE)
+
+# Print our PDB file names
+basename(pdb_files)
+```
+
+
+
+superimpose the data from the models
+
+
+```{r}
+library(bio3d)
+
+# Read all data from Models 
+#  and superpose/fit coords
+pdbs <- pdbaln(pdb_files, fit=TRUE, exefile="msa")
+```
+
+
+
+Find the RMSD between the models
+
+
+```{r}
+rd <- rmsd(pdbs, fit=T)
+range(rd)
+```
+
+
+
+Visualize the RMSD between the models as a heatmap
+
+
+
+```{r}
+library(pheatmap)
+
+colnames(rd) <- paste0("m",1:5)
+rownames(rd) <- paste0("m",1:5)
+pheatmap(rd)
+```
+
+
+
+
+Plot the pLDDT values across the models
+
+
+
+```{r}
+plotb3(pdbs$b[1,], typ="l", lwd=2, sse=pdb)
+points(pdbs$b[2,], typ="l", col="red")
+points(pdbs$b[3,], typ="l", col="blue")
+points(pdbs$b[4,], typ="l", col="darkgreen")
+points(pdbs$b[5,], typ="l", col="orange")
+abline(v=100, col="gray")
+```
+
+
+
+
+Improve the superimposition by finding a rigid core 
+
+
+
+```{r}
+core <- core.find(pdbs)
+core.inds <- print(core, vol=0.5)
+xyz <- pdbfit(pdbs, core.inds, outpath="corefit_structures")
+```
+
+
+
+
+Look at RMSF between positions on the structure
+
+
+
+```{r}
+rf <- rmsf(xyz)
+
+plotb3(rf, sse=pdb)
+abline(v=100, col="gray", ylab="RMSF")
+```
+
+
+
+
+Predicted alignment error for domains
+
+
+
+```{r}
+library(jsonlite)
+
+# Listing of all PAE JSON files
+pae_files <- list.files(path=results_dir,
+                        pattern=".*model.*\\.json",
+                        full.names = TRUE)
+```
+
+```{r}
+pae1 <- read_json(pae_files[1],simplifyVector = TRUE)
+pae5 <- read_json(pae_files[5],simplifyVector = TRUE)
+
+attributes(pae1)
+
+```
+
+```{r}
+# Per-residue pLDDT scores 
+#  same as B-factor of PDB..
+head(pae1$plddt) 
+pae1$max_pae
+pae5$max_pae
+```
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)")
+```
+
+```{r}
+plot.dmat(pae5$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+
+
+Residue conservation from alignment file
+
+
+
+```{r}
+aln_file <- list.files(path=results_dir,
+                       pattern=".a3m$",
+                        full.names = TRUE)
+aln_file
+```
+
+```{r}
+aln <- read.fasta(aln_file[1], to.upper = TRUE)
+```
+
+```{r}
+dim(aln$ali)
+```
+
+```{r}
+sim <- conserv(aln)
+```
+
+```{r}
+plotb3(sim[1:99], sse=trim.pdb(pdb, chain="A"),
+       ylab="Conservation Score")
+```
+
+```{r}
+con <- consensus(aln, cutoff = 0.9)
+con$seq
+```
+
+```{r}
+m1.pdb <- read.pdb(pdb_files[1])
+occ <- vec2resno(c(sim[1:99], sim[1:99]), m1.pdb$atom$resno)
+write.pdb(m1.pdb, o=occ, file="m1_conserv.pdb")
+```
+

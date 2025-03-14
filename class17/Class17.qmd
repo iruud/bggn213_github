@@ -1,0 +1,317 @@
+---
+title: "Class 17"
+author: "Isabella Ruud PID: A59016138"
+format: pdf
+toc: true
+---
+# Stuff done in the terminal:
+
+to connect to the AWS machine, can run: 
+
+ssh -i "bioinf_isabellaruud.pem" ubuntu@ec2-54-200-30-181.us-west-2.compute.amazonaws.com
+
+
+set environment variable for key
+export KEY="~/Downloads/bioinf_isabellaruud.pem"
+
+and can check that the variable was stored correctly using echo #KEY
+
+
+set environment variable for the server
+export SERVER="ubuntu@ec2-54-200-30-181.us-west-2.compute.amazonaws.com"
+
+now can run this to connect
+ssh -i $KEY $SERVER
+
+Download Ubuntu binaries for SRA-toolkit
+curl -O https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-ubuntu64.tar.gz
+
+Unzip and Untar SRA-toolkit files
+gunzip sratoolkit.current-ubuntu64.tar.gz
+tar -xvf sratoolkit.current-ubuntu64.tar
+
+or tar -zxvf sratoolkit.current-ubuntu64.tar.gz
+
+add the path to sra toolkit in the environment path variable so that we don't have to type it in each time
+
+export PATH=$PATH:/home/ubuntu/sratoolkit.3.2.0-ubuntu64/bin
+
+download the files in the SRA ID SRR600956
+prefetch SRR600956
+
+reconstruct the fastq files using:
+fastq-dump SRR600956
+
+can use head to look into the file
+head -8 SRR600956.fastq
+
+to figure out how many reads are in the file:
+grep -c "@SRR600956" SRR600956.fastq
+
+25849655 reads
+
+can also check with: 
+tail SRR600956.fastq
+
+Now switching to RNA seq data:
+
+use prefetch to load the SRR file
+prefetch SRR2156848
+
+get the fastq files in paired end format
+fastq-dump --split-3 SRR2156848
+
+check how many reads are in each file
+grep -c "@SRR2156848" SRR2156848_1.fastq
+2959900 reads
+
+grep -c "@SRR2156848" SRR2156848_2.fastq
+2959900 reads
+
+can do all at once with grep -c "@SRR" *.fastq
+
+repeat this process of prefetch and fastq-dump for SRR2156849, SRR2156850, SRR2156851
+
+prefetch SRR2156849 SRR2156850 SRR2156851
+
+fastq-dump --split-3 SRR2156849 SRR2156850 SRR2156851
+
+download kallisto
+wget https://github.com/pachterlab/kallisto/releases/download/v0.44.0/kallisto_linux-v0.44.0.tar.gz
+
+unzip and untar
+gunzip kallisto_linux-v0.44.0.tar.gz
+tar -xvf kallisto_linux-v0.44.0.tar
+
+add kallisto path to environment variable
+export PATH=$PATH:kallisto_linux-v0.44.0/
+
+get human hg19 reference transcriptome
+
+wget ftp://ftp.ensembl.org/pub/release-67/fasta/homo_sapiens/cdna/Homo_sapiens.GRCh37.67.cdna.all.fa.gz
+
+unzip the file
+gunzip Homo_sapiens.GRCh37.67.cdna.all.fa.gz
+
+count up the number of sequences
+grep -c ">" Homo_sapiens.GRCh37.67.cdna.all.fa
+176981 sequencings
+
+grep -c "protein_coding" Homo_sapiens.GRCh37.67.cdna.all.fa
+176981
+
+build the transcriptome index using kallisto
+kallisto index -i hg19.ensembl Homo_sapiens.GRCh37.67.cdna.all.fa
+
+
+Run transcript quantification for the pair of SRR2156848 FASTQ files:
+kallisto quant -i hg19.ensembl -o SRR2156848_quant SRR2156848_1.fastq SRR2156848_2.fastq
+
+run for the other files
+kallisto quant -i hg19.ensembl -o SRR2156849_quant SRR2156849_1.fastq SRR2156849_2.fastq
+
+kallisto quant -i hg19.ensembl -o SRR2156850_quant SRR2156850_1.fastq SRR2156850_2.fastq
+
+kallisto quant -i hg19.ensembl -o SRR2156851_quant SRR2156851_1.fastq SRR2156851_2.fastq
+
+or use a script to automate this using nano that has these lines of code
+
+make that script executable
+chmod +x runme.sh
+
+./runme.sh
+
+get results back to computer 
+scp -r -i "~/Downloads/bioinf_isabellaruud.pem" ubuntu@ec2-34-219-113-54.us-west-2.compute.amazonaws.com:~/*_quant .
+
+# Downstream analysis
+
+
+```{r}
+folders <- list.files(pattern = "_quant")
+files <- paste0(folders, "/abundance.h5")
+files
+```
+```{r}
+file.exists(files)
+```
+load up tximport package
+```{r}
+library(tximport)
+```
+
+have names 1,2,3,4 so don't know what samples they are
+so will add names
+
+```{r}
+names(files) <- sub("_quant", "", folders)
+```
+
+
+```{r}
+txi.kallisto <- tximport(files, type = "kallisto", txOut = TRUE)
+#head(txi.kallisto)
+```
+
+see how many reads are in each sample
+
+```{r}
+colSums(txi.kallisto$counts)
+```
+
+# Remove zero count genes
+
+Need to filter out annotated transcripts with no reads
+```{r}
+to.keep <- rowSums(txi.kallisto$counts) > 0
+kset.nonzero <- txi.kallisto$counts[to.keep,]
+```
+
+check how many genes are left
+```{r}
+nrow(kset.nonzero)
+```
+
+remove genes with no change over the samples
+```{r}
+keep2 <- apply(kset.nonzero,1,sd)>0
+x <- kset.nonzero[keep2,]
+```
+
+see how many are left
+```{r}
+nrow(x)
+```
+
+
+# Try a PCA
+
+```{r}
+pca <- prcomp(t(x), scale = TRUE)
+summary(pca)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(pca$x) +
+  aes(PC1, PC2) +
+  geom_point(col=c("blue","blue","red","red"))
+```
+
+```{r}
+ggplot(pca$x) +
+  aes(PC1, PC3) +
+  geom_point(col=c("blue","blue","red","red"))
+```
+
+```{r}
+ggplot(pca$x) +
+  aes(PC2, PC3) +
+  geom_point(col=c("blue","blue","red","red"))
+```
+
+```{r}
+
+library(ggrepel)
+
+colData <- data.frame(condition = factor(rep(c("control", "treatment"), each = 2)))
+rownames(colData) <- colnames(txi.kallisto$counts)
+
+y <- as.data.frame(pca$x)
+y$Condition <- as.factor(colData$condition)
+
+ggplot(y) +
+  aes(PC1, PC2, col=Condition) +
+  geom_point() +
+  geom_text_repel(label=rownames(y)) +
+  theme_bw()
+```
+
+```{r}
+colData <- data.frame(condition = factor(rep(c("control", "treatment"), each = 2)))
+rownames(colData) <- colnames(txi.kallisto$counts)
+
+y <- as.data.frame(pca$x)
+y$Condition <- as.factor(colData$condition)
+
+ggplot(y) +
+  aes(PC1, PC3, col=Condition) +
+  geom_point() +
+  geom_text_repel(label=rownames(y)) +
+  theme_bw()
+```
+
+```{r}
+colData <- data.frame(condition = factor(rep(c("control", "treatment"), each = 2)))
+rownames(colData) <- colnames(txi.kallisto$counts)
+
+y <- as.data.frame(pca$x)
+y$Condition <- as.factor(colData$condition)
+
+ggplot(y) +
+  aes(PC2, PC3, col=Condition) +
+  geom_point() +
+  geom_text_repel(label=rownames(y)) +
+  theme_bw()
+```
+
+
+
+
+# DESeq analysis
+
+```{r}
+library(DESeq2)
+```
+
+
+```{r}
+sampleTable <- data.frame(condition = factor(rep(c("control", "treatment"), each = 2)))
+rownames(sampleTable) <- colnames(txi.kallisto$counts)
+```
+
+```{r}
+dds <- DESeqDataSetFromTximport(txi.kallisto,
+                                sampleTable, 
+                                ~condition)
+```
+
+```{r}
+dds <- DESeq(dds)
+```
+
+
+```{r}
+res <- results(dds)
+head(res)
+```
+
+
+```{r}
+mycol <- c(rep("grey", nrow(res)))
+mycol[res$log2FoldChange > 2] <- "red"
+mycol[res$log2FoldChange < 2] <- "blue"
+mycol[res$padj > 0.005 ] <- "grey"
+ggplot(res) +
+  aes(x=log2FoldChange, y = -log(padj)) +
+  geom_point(col=mycol)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

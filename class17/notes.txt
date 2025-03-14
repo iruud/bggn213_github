@@ -1,0 +1,7 @@
+
+#need to have key file with correct path (probably in downloads folder)
+#Example to connect to machine:
+#ssh -i "~/Downloads/bioinf_isabellaruud.pem" ubuntu@ec2-54-200-30-181.us-west-2.compute.amazonaws.com
+
+export KEY="~/Downloads/bioinf_isabellaruud.pem"
+export SERVER="ubuntu@ec2-54-200-30-181.us-west-2.compute.amazonaws.com"

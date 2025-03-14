@@ -1,0 +1,74 @@
+---
+title: "Class 19"
+author: "Isabella Ruud: PID A59016138"
+format: html
+---
+
+We could use ==, !=, or conserv() to figure out which positions are mutated
+
+```{r}
+library(bio3d)
+s <- read.fasta("A59016138_mutant_seq.fa")
+score <- conserv(s)
+
+```
+
+Can we find elements where score is not equal to 1? 
+
+```{r}
+ind <- score != 1
+pos <- which(ind)
+pos
+```
+
+How can I format this to give an answer like A130T?
+
+```{r}
+wt <- s$ali[1,pos]
+mut <- s$ali[2,pos]
+
+wt
+pos
+mut
+
+```
+
+Can format in conventional way with:
+
+```{r}
+paste(wt, pos, mut, sep="")
+
+```
+
+Do this for the A69038031 sequences:
+```{r}
+s_test <- read.fasta("A69038031_mutant_seq.fa")
+score <- conserv(s_test)
+ind <- score != 1
+pos <- which(ind)
+wt <- s_test$ali[1,pos]
+mut <- s_test$ali[2,pos]
+paste(wt, pos, mut, sep="")
+```
+
+
+```{r}
+pdb <- read.pdb("fold_2025_03_12_14_40_model_0.pdb")
+attributes(pdb)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
