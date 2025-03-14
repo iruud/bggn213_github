@@ -19,8 +19,16 @@ Winter 2025 class content
 
 - Class 11 [Genome informatics](https://github.com/iruud/bggn213_github/blob/main/class11/class11_hw.html)
 
-- Class 12 [AlphaFold](https://github.com/iruud/bggn213_github/blob/main/class12/class12.html)
+- Class 12 [AlphaFold](https://github.com/iruud/bggn213_github/blob/main/class12/class12_qmd.html)
 
 - Class 13 [RNA Seq intro](https://github.com/iruud/bggn213_github/blob/main/class13/class13.html)
 
 - Class 14 [RNASeq mini project](https://github.com/iruud/bggn213_github/blob/main/class14/class14.html)
+
+- Class 16 [Essential UNIX for bioinformatics]()
+
+- Class 17 [Analyzing sequencing data in the cloud]()
+
+- Class 18 [Mini Project: Investigating Pertussis Resurgence]()
+
+- Class 19 [Mini Project: Cancer Mutation Analysis]
