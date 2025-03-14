@@ -35,4 +35,4 @@ Winter 2025 class content
 
 - Class 19 [Mini Project: Cancer Mutation Analysis](class19/class19.html)
 
-- 
+  [.](https://github.com/iruud/bggn213_github/blob/main/rna_2x.png)
