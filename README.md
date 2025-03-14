@@ -5,7 +5,7 @@ Winter 2025 class content
 
 - Class 04 Intro to R
 
-- Class 05 [Data vis with ggplot2](https://github.com/iruud/bggn213_github/blob/main/class05/class05dataviz.pdf)
+- Class 05 [Data vis with ggplot2](class05/class05dataviz.html)
 
 - Class 06 [R functions](https://github.com/iruud/bggn213_github/blob/main/class06/class06_functions.pdf)
 
